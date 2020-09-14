@@ -59,6 +59,8 @@ class Hoster {
 
       console.log(workerId, reqMethod, reqPath, reqHeaders);
 
+      const proxyUrl = this.server + '/res/' + randChan;
+
       const upstreamRes = await new Promise((resolve, reject) => {
         const upstreamReq = http.request('http://localhost:9002' + reqPath, {
           method: reqMethod,
@@ -68,6 +70,16 @@ class Hoster {
         upstreamReq.on('error', (err) => {
           console.log("upstreamReq err");
           console.error(err);
+
+          const errorReq = https.request(proxyUrl, {
+            method: 'POST',
+            headers: {
+              'Pb-Status': '500',
+            },
+          });
+
+          errorReq.write("No upstream server");
+          errorReq.end();
         });
 
         res.pipe(upstreamReq);
@@ -84,8 +96,6 @@ class Hoster {
       for (const headerName in upstreamRes.headers) {
         resHeaders['Pb-H-' + headerName] = upstreamRes.headers[headerName];
       }
-
-      const proxyUrl = this.server + '/res/' + randChan;
 
       await new Promise((resolve, reject) => {
         const proxyReq = https.request(proxyUrl, {
